@@ -8,28 +8,26 @@ from scipy.spatial.transform import Rotation as rot
 import pyrealsense2 as rs
 import os
 import random
+import time
 
 class Simulation:
     def __init__(self, panel, frame) -> None:
         self.panel = panel
         self.frame = frame
-        rr.init("rerun_fake_data_test")
-        laptopIP = os.environ.get("SSH_CLIENT")
-        if(laptopIP):
-            print(f"rerun+http://{laptopIP.split()[0]}:9876/proxy")
-            rr.connect_grpc(f"rerun+http://{laptopIP.split()[0]}:9876/proxy")
-            print("connected to other device!")
-        else:
-            rr.connect_grpc("rerun+http://127.0.0.1:9876/proxy")
-            print("other device not connected running locally")
+        rr.init("rerun_fake_data_test", spawn=False, recording_id="pleaseeework")
+        
+        laptopIP = "100.116.0.48"
+        rr.connect_grpc(f"rerun+http://{laptopIP}:9876/proxy")
 
         rr.set_time("stable_time", duration=0)
-        #rr.log("logs", rr.TextLog(f"please work"))
-        #self.laptopCamera()
-        #self.pipelineInit()
-        #self.logCameras()
+        rr.log("logs", rr.TextLog("please work"))
+        self.laptopCamera()
+        self.pipelineInit()
+        self.logCameras()
 
-        #self.simulate(self.fakePanels())
+        self.simulate(self.fakePanels())
+        time.sleep(100)
+        print("completeee")
         rr.disconnect()
 
     def fakePanels(self):
@@ -48,7 +46,6 @@ class Simulation:
                 if packet.pts is None:
                     continue
                 rr.set_time("stable_time", duration=float(packet.pts * packet.time_base))
-                rr.log("logs", rr.TextLog(f"please work"))
                 for c in range(4):
                     rr.log(f"bot/cam{c+1}", rr.VideoStream.from_fields(sample=bytes(packet)))
             self.logEverythingElse(panel)
@@ -58,7 +55,6 @@ class Simulation:
             rr.set_time("stable_time", duration=time)
 
     def laptopCamera(self):
-        print("found laptop camera")
         self.input_container = av.open("/dev/video0", format="v4l2")
         istr = self.input_container.streams.video[0]
         self.fps = 30
@@ -69,9 +65,9 @@ class Simulation:
 
         self.formats = {rr.VideoCodec.H265: "hevc", rr.VideoCodec.H264: "h264"}
         self.encoders = {rr.VideoCodec.H265: "libx265", rr.VideoCodec.H264: "libx264"}
+        print("found laptop camera")
 
     def pipelineInit(self):
-        print("found pipeline")
         av.logging.set_level(av.logging.VERBOSE)
         container = av.open("/dev/null", "w", format=self.formats[self.codec])
         self.stream = container.add_stream(self.encoders[self.codec], rate=self.fps)
@@ -81,9 +77,9 @@ class Simulation:
         self.stream.height = self.height
         self.stream.pix_fmt = "yuv420p"
         self.stream.max_b_frames = 0
+        print("found pipeline")
 
     def logCameras(self):
-        print("logged cams")
         camloc = [[0, 0.25, 0.5], [0.25, 0, 0.5], [0, -0.25, 0.5], [-0.25, 0.0, 0.5]]
         camrot = [0, 270, 180, 90]
         for c in range(4): #4
@@ -103,6 +99,7 @@ class Simulation:
                 static=True,
             )
             rr.log(f"bot/cam{c+1}", rr.VideoStream(codec=self.codec), static=True)
+        print("logged cams")
 
 
     def logEverythingElse(self, panel):
